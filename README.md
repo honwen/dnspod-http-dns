@@ -15,7 +15,7 @@
 $ docker pull chenhw2/dnspod-http-dns
 
 $ docker run -d \
-    -e "Args=-T -U --fallbackedns 119.29.29.29" \
+    -e "Args=--fallbackedns 119.29.29.29" \
     -p "5300:5300/udp" \
     -p "5300:5300/tcp" \
     chenhw2/dnspod-http-dns
