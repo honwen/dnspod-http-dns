@@ -63,8 +63,8 @@ func main() {
 			Usage: "Serve address",
 		},
 		cli.StringFlag{
-			Name:  "fallbackedns, e",
-			Usage: "Extension mechanisms for DNS (EDNS) is parameters of the Domain Name System (DNS) protocol.",
+			Name:  "edns, e",
+			Usage: "Extension mechanisms for DNS (EDNS) is parameters of the Domain Name System (DNS) protocol",
 		},
 		cli.BoolFlag{
 			Name:  "udp, U",
@@ -87,7 +87,7 @@ func main() {
 			cli.ShowAppHelp(c)
 			os.Exit(0)
 		}
-		dnsProvider = dnspod.NewDNSPOD(c.String("fallbackedns"))
+		dnsProvider = dnspod.NewDNSPOD(c.String("edns"))
 		return nil
 	}
 	app.Run(os.Args)
