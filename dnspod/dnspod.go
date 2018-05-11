@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"strconv"
@@ -13,11 +14,21 @@ import (
 	"github.com/miekg/dns"
 )
 
-// DNSpodIP 119.29.29.29 or 182.254.116.116
-const DNSpodIP = `119.29.29.29`
+// DNSpodIPs 119.29.29.29 or 182.254.116.116
+var DNSpodIPs = []string{
+	`119.29.29.29`, `119.28.28.28`,
+	`182.254.118.118`, `182.254.116.116`,
+}
+
 const rejectedData = `0.0.0.0,30`
 
-var dnspodURL = fmt.Sprintf(`http://%s/d`, DNSpodIP)
+func randStr(arr []string) string {
+	return arr[rand.Intn(len(arr))]
+}
+
+func getDNSpodURL() string {
+	return fmt.Sprintf(`http://%s/d`, randStr(DNSpodIPs))
+}
 
 func getAtoRR(qname, ip string, ttl uint32) dns.RR {
 	hdr := dns.RR_Header{Name: qname, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: ttl}
@@ -29,7 +40,6 @@ func getAtoRR(qname, ip string, ttl uint32) dns.RR {
 // DNSPOD is the DNSPOD DNS-over-HTTP provider;
 type DNSPOD struct {
 	EDNS         net.IP
-	FallbackDNS  *net.TCPAddr
 	httpclient   *http.Client
 	dnsTCPclient *dns.Client
 	dnsUDPclient *dns.Client
@@ -39,7 +49,6 @@ type DNSPOD struct {
 func NewDNSPOD(EDNS string) (dp *DNSPOD) {
 	dp = new(DNSPOD)
 	dp.EDNS = net.ParseIP(EDNS)
-	dp.FallbackDNS, _ = net.ResolveTCPAddr("tcp4", DNSpodIP+":53")
 
 	dp.httpclient = &http.Client{
 		Transport: &http.Transport{
@@ -74,7 +83,8 @@ func (dp *DNSPOD) DNSHandleFunc(w dns.ResponseWriter, req *dns.Msg) {
 	switch q.Qtype {
 	case dns.TypeA:
 		log.Println("requesting:", q.Name, dns.TypeToString[q.Qtype])
-		httpreq, _ := http.NewRequest(http.MethodGet, dnspodURL, nil)
+		httpreq, _ := http.NewRequest(http.MethodGet, getDNSpodURL(), nil)
+		fmt.Printf("%+v", httpreq)
 		qry := httpreq.URL.Query()
 		qry.Add("dn", q.Name)
 		qry.Add("ttl", "1")
@@ -132,14 +142,15 @@ func (dp *DNSPOD) DNSHandleFunc(w dns.ResponseWriter, req *dns.Msg) {
 }
 
 func (dp *DNSPOD) normalDNS(req *dns.Msg) (rmsg *dns.Msg) {
+	dnsServer, _ := net.ResolveTCPAddr("tcp4", randStr(DNSpodIPs)+":53")
 	q := req.Question[0]
 	if nil != req {
 		log.Println("request-fallback-TCP:", q.Name, dns.TypeToString[q.Qtype])
-		rmsg, _, _ = dp.dnsTCPclient.Exchange(req, dp.FallbackDNS.String())
+		rmsg, _, _ = dp.dnsTCPclient.Exchange(req, dnsServer.String())
 	}
 	if nil == rmsg {
 		log.Println("request-fallback-UDP:", q.Name, dns.TypeToString[q.Qtype])
-		rmsg, _, _ = dp.dnsUDPclient.Exchange(req, dp.FallbackDNS.String())
+		rmsg, _, _ = dp.dnsUDPclient.Exchange(req, dnsServer.String())
 	}
 	return
 }

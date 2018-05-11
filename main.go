@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"os/signal"
+	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -54,7 +57,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "dnspod-http-dns"
 	app.Usage = "A DNS-protocol proxy for DNSPOD's DNS-over-HTTP service."
-	app.Version = version
+	app.Version = fmt.Sprintf("Git:[%s] (%s)", strings.ToUpper(version), runtime.Version())
 	// app.HideVersion = true
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -87,6 +90,11 @@ func main() {
 			cli.ShowAppHelp(c)
 			os.Exit(0)
 		}
+
+		if !strings.HasPrefix(version, "MISSING") {
+			fmt.Fprintf(os.Stderr, "%s %s\n", strings.ToUpper(c.App.Name), c.App.Version)
+		}
+
 		dnsProvider = dnspod.NewDNSPOD(c.String("edns"))
 		return nil
 	}
